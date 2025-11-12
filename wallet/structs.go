@@ -43,7 +43,13 @@ type ResponseGetBalance struct {
 		NumUnspentOutputs uint64 `json:"num_unspent_outputs"`
 		// Blocks to unlock
 		BlocksToUnlock int64 `json:"blocks_to_unlock"`
+		// Time (in seconds) before balance is safe to spend.
+		TimeToUnlock uint64 `json:"time_to_unlock"`
 	} `json:"per_subaddress"`
+	// Time (in seconds) before balance is safe to spend.
+	TimeToUnlock uint64 `json:"time_to_unlock"`
+	// Number of blocks before balance is safe to spend.
+	BlocksToUnlock uint64 `json:"blocks_to_unlock"`
 }
 
 // GetAddress()
@@ -240,12 +246,24 @@ type RequestTransfer struct {
 	GetTxHex bool `json:"get_tx_hex,omitempty"`
 	// (Optional) Return the metadata needed to relay the transaction. (Defaults to false)
 	GetTxMetadata bool `json:"get_tx_metadata,omitempty"`
+	// (Optional) Choose which destinations to fund the tx fee from instead of the change output.
+	SubtractFeeFromOutputs []uint64 `json:"subtract_fee_from_outputs,omitempty"`
 }
 type ResponseTransfer struct {
 	// Amount transferred for the transaction.
 	Amount uint64 `json:"amount"`
+	// Amounts transferred per destination.
+	AmountsByDest struct {
+		Amounts []uint64 `json:"amounts"`
+	} `json:"amounts_by_dest,omitempty"`
 	// Integer value of the fee charged for the txn.
 	Fee uint64 `json:"fee"`
+	// Transaction weight
+	Weight uint64 `json:"weight,omitempty"`
+	// Key images of spent outputs
+	SpentKeyImages struct {
+		KeyImages []string `json:"key_images"`
+	} `json:"spent_key_images,omitempty"`
 	// MultiTxSet multisig_txset - Set of multisig transactions in the process of being signed (empty for non-multisig).
 
 	// Raw transaction represented as hex string, if get_tx_hex is true.
@@ -492,6 +510,8 @@ type ResponseGetPayments struct {
 		BlockHeight uint64 `json:"block_height"`
 		// Time (in block height) until this payment is safe to spend.
 		UnlockTime uint64 `json:"unlock_time"`
+		// Is the output spendable.
+		Locked bool `json:"locked"`
 		// Subaddress index:
 		SubaddrIndex struct {
 			// Account index for the subaddress.
@@ -524,6 +544,8 @@ type ResponseGetBulkPayments struct {
 		BlockHeight uint64 `json:"block_height"`
 		// Time (in block height) until this payment is safe to spend.
 		UnlockTime uint64 `json:"unlock_time"`
+		// Is the output spendable.
+		Locked bool `json:"locked"`
 		// Subaddress index:
 		SubaddrIndex struct {
 			// Account index for the subaddress.
@@ -789,6 +811,8 @@ type Transfer struct {
 	Address string `json:"address"`
 	// Amount transferred.
 	Amount uint64 `json:"amount"`
+	// List of amounts for each destination.
+	Amounts []uint64 `json:"amounts,omitempty"`
 	// Number of block mined since the block containing this transaction (or block height at which the transaction should be added to a block if not yet confirmed).
 	Confirmations uint64 `json:"confirmations"`
 	// JSON objects containing transfer destinations:
@@ -810,6 +834,11 @@ type Transfer struct {
 		// Index of the subaddress under the account.
 		Minor uint64 `json:"minor"`
 	} `json:"subaddr_index"`
+	// List of subaddress indices
+	SubaddrIndices []struct {
+		Major uint64 `json:"major"`
+		Minor uint64 `json:"minor"`
+	} `json:"subaddr_indices,omitempty"`
 	// Estimation of the confirmations needed for the transaction to be included in a block.
 	SuggestedConfirmationsThreshold uint64 `json:"suggested_confirmations_threshold"`
 	// POSIX timestamp for when this transfer was first confirmed in a block (or timestamp submission if not mined yet).
@@ -840,6 +869,8 @@ type RequestGetTransferByTxID struct {
 type ResponseGetTransferByTxID struct {
 	// JSON object containing payment information:
 	Transfer Transfer `json:"transfer"`
+	// Array of transfers with the same txid (if multiple found)
+	Transfers []Transfer `json:"transfers,omitempty"`
 }
 
 // Sign()
@@ -1148,4 +1179,172 @@ type ResponseSubmitMultisig struct {
 type ResponseGetVersion struct {
 	// RPC version, formatted with Major * 2^16 + Minor (Major encoded over the first 16 bits, and Minor over the last 16 bits).
 	Version uint64 `json:"version"`
+}
+
+// SetDaemon()
+type RequestSetDaemon struct {
+	// (Optional) The URL of the daemon to connect to.
+	Address string `json:"address,omitempty"`
+	// (Optional) If false, some RPC wallet methods will be disabled.
+	Trusted bool `json:"trusted,omitempty"`
+	// (Optional) Specifies whether the daemon uses SSL encryption.
+	SSLSupport string `json:"ssl_support,omitempty"`
+	// (Optional) The file path location of the SSL key.
+	SSLPrivateKeyPath string `json:"ssl_private_key_path,omitempty"`
+	// (Optional) The file path location of the SSL certificate.
+	SSLCertificatePath string `json:"ssl_certificate_path,omitempty"`
+	// (Optional) The file path location of the certificate authority file.
+	SSLCAFile string `json:"ssl_ca_file,omitempty"`
+	// (Optional) The SHA1 fingerprints accepted by the SSL certificate.
+	SSLAllowedFingerprints []string `json:"ssl_allowed_fingerprints,omitempty"`
+	// (Optional) If false, the certificate must be signed by a trusted certificate authority.
+	SSLAllowAnyCert bool `json:"ssl_allow_any_cert,omitempty"`
+}
+
+// AutoRefresh()
+type RequestAutoRefresh struct {
+	// Enable (true) or disable (false) auto-refresh.
+	Enable bool `json:"enable"`
+	// (Optional) The number of seconds between refreshes (default 10).
+	Period uint64 `json:"period,omitempty"`
+}
+
+// DescribeTransfer()
+type RequestDescribeTransfer struct {
+	// (Optional) Set of unsigned tx returned by "transfer" or "transfer_split" methods.
+	UnsignedTxSet string `json:"unsigned_txset,omitempty"`
+	// (Optional) Set of multisig tx returned by "transfer" or "transfer_split" methods.
+	MultisigTxSet string `json:"multisig_txset,omitempty"`
+}
+
+type ResponseDescribeTransfer struct {
+	// List of descriptors for each transaction
+	Desc []struct {
+		// The sum of the inputs spent by the transaction in atomic units.
+		AmountIn uint64 `json:"amount_in"`
+		// The sum of the outputs created by the transaction in atomic units.
+		AmountOut uint64 `json:"amount_out"`
+		// The number of inputs in the ring.
+		RingSize uint64 `json:"ring_size"`
+		// The number of blocks before the monero can be spent.
+		UnlockTime uint64 `json:"unlock_time"`
+		// Payment ID for this transfer.
+		PaymentID string `json:"payment_id"`
+		// The address of the change recipient.
+		ChangeAddress string `json:"change_address"`
+		// The amount sent to the change address in atomic units.
+		ChangeAmount uint64 `json:"change_amount"`
+		// The fee charged for the transaction in atomic units.
+		Fee uint64 `json:"fee"`
+		// List of recipients
+		Recipients []*Destination `json:"recipients"`
+		// The number of fake outputs added to single-output transactions.
+		DummyOutputs uint64 `json:"dummy_outputs"`
+		// Arbitrary transaction data in hexadecimal format.
+		Extra string `json:"extra"`
+	} `json:"desc"`
+}
+
+// EditAddressBook()
+type RequestEditAddressBook struct {
+	// Index of the address book entry to edit.
+	Index uint64 `json:"index"`
+	// If true, set the address for this entry to the value of "address".
+	SetAddress bool `json:"set_address"`
+	// The address to set
+	Address string `json:"address,omitempty"`
+	// If true, set the description for this entry to the value of "description".
+	SetDescription bool `json:"set_description"`
+	// Description to set
+	Description string `json:"description,omitempty"`
+	// If true, set the payment ID for this entry to the value of "payment_id".
+	SetPaymentID bool `json:"set_payment_id"`
+	// Payment ID to set
+	PaymentID string `json:"payment_id,omitempty"`
+}
+
+// EstimateTxSizeAndWeight()
+type RequestEstimateTxSizeAndWeight struct {
+	// Number of inputs
+	NInputs uint64 `json:"n_inputs"`
+	// Number of outputs
+	NOutputs uint64 `json:"n_outputs"`
+	// Ring size
+	RingSize uint64 `json:"ring_size"`
+	// Is this a Ring Confidential Transaction (post blockheight 1220516)
+	RCT bool `json:"rct"`
+}
+
+type ResponseEstimateTxSizeAndWeight struct {
+	// Estimated transaction size in bytes
+	Size uint64 `json:"size"`
+	// Estimated transaction weight
+	Weight uint64 `json:"weight"`
+}
+
+// ExchangeMultisigKeys()
+type RequestExchangeMultisigKeys struct {
+	// Wallet password
+	Password string `json:"password"`
+	// Multisig info from other participants
+	MultisigInfo []string `json:"multisig_info"`
+	// Force multisig key exchange even if address checks fail
+	ForceUpdateUseWithCaution bool `json:"force_update_use_with_caution,omitempty"`
+}
+
+type ResponseExchangeMultisigKeys struct {
+	// Multisig wallet address
+	Address string `json:"address"`
+	// Multisig info to share with other participants
+	MultisigInfo string `json:"multisig_info"`
+}
+
+// Freeze()
+type RequestFreeze struct {
+	// The key image of the output to freeze
+	KeyImage string `json:"key_image"`
+}
+
+// Frozen()
+type RequestFrozen struct {
+	// The key image of the output to check
+	KeyImage string `json:"key_image"`
+}
+
+type ResponseFrozen struct {
+	// True if the output is frozen
+	Frozen bool `json:"frozen"`
+}
+
+// Thaw()
+type RequestThaw struct {
+	// The key image of the output to thaw
+	KeyImage string `json:"key_image"`
+}
+
+// ScanTx()
+type RequestScanTx struct {
+	// Transaction IDs to scan
+	TxIDs []string `json:"txids"`
+}
+
+// SetupBackgroundSync()
+type RequestSetupBackgroundSync struct {
+	// The type of background sync (e.g., "reuse-wallet", "custom")
+	BackgroundSyncType string `json:"background_sync_type"`
+	// The wallet password (for reuse-wallet type)
+	WalletPassword string `json:"wallet_password,omitempty"`
+	// The background cache password (for custom type)
+	BackgroundCachePassword string `json:"background_cache_password,omitempty"`
+}
+
+type ResponseSetupBackgroundSync struct {
+	// Status message
+	Status string `json:"status"`
+}
+
+// GetDefaultFeePriority()
+type ResponseGetDefaultFeePriority struct {
+	// Default fee priority (0-3)
+	Priority Priority `json:"priority"`
 }

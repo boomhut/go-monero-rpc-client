@@ -163,6 +163,34 @@ type Client interface {
 	SubmitMultisig(*RequestSubmitMultisig) (*ResponseSubmitMultisig, error)
 	// Get RPC version Major & Minor integer-format, where Major is the first 16 bits and Minor the last 16 bits.
 	GetVersion() (*ResponseGetVersion, error)
+	// Set daemon that the wallet connects to.
+	SetDaemon(*RequestSetDaemon) error
+	// Set auto-refresh mode.
+	AutoRefresh(*RequestAutoRefresh) error
+	// Describe a transaction from unsigned_txset or multisig_txset.
+	DescribeTransfer(*RequestDescribeTransfer) (*ResponseDescribeTransfer, error)
+	// Edit an existing address book entry.
+	EditAddressBook(*RequestEditAddressBook) error
+	// Estimate size and weight of a transaction.
+	EstimateTxSizeAndWeight(*RequestEstimateTxSizeAndWeight) (*ResponseEstimateTxSizeAndWeight, error)
+	// Exchanges multisig keys with other participants (after make_multisig).
+	ExchangeMultisigKeys(*RequestExchangeMultisigKeys) (*ResponseExchangeMultisigKeys, error)
+	// Freeze a single output by key image so it will not be used.
+	Freeze(*RequestFreeze) error
+	// Checks whether a given output is currently frozen by key image.
+	Frozen(*RequestFrozen) (*ResponseFrozen, error)
+	// Thaw a single output by key image so it may be used again.
+	Thaw(*RequestThaw) error
+	// Scan blockchain for transactions for this wallet.
+	ScanTx(*RequestScanTx) error
+	// Set up background sync mode.
+	SetupBackgroundSync(*RequestSetupBackgroundSync) (*ResponseSetupBackgroundSync, error)
+	// Start background sync mode.
+	StartBackgroundSync() error
+	// Stop background sync mode.
+	StopBackgroundSync() error
+	// Get information on all accounts.
+	GetDefaultFeePriority() (*ResponseGetDefaultFeePriority, error)
 }
 
 // New returns a new monero-wallet-rpc client.
@@ -799,6 +827,118 @@ func (c *client) SubmitMultisig(req *RequestSubmitMultisig) (resp *ResponseSubmi
 
 func (c *client) GetVersion() (resp *ResponseGetVersion, err error) {
 	err = c.do("get_version", nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func (c *client) SetDaemon(req *RequestSetDaemon) (err error) {
+	err = c.do("set_daemon", &req, nil)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (c *client) AutoRefresh(req *RequestAutoRefresh) (err error) {
+	err = c.do("auto_refresh", &req, nil)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (c *client) DescribeTransfer(req *RequestDescribeTransfer) (resp *ResponseDescribeTransfer, err error) {
+	err = c.do("describe_transfer", &req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func (c *client) EditAddressBook(req *RequestEditAddressBook) (err error) {
+	err = c.do("edit_address_book", &req, nil)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (c *client) EstimateTxSizeAndWeight(req *RequestEstimateTxSizeAndWeight) (resp *ResponseEstimateTxSizeAndWeight, err error) {
+	err = c.do("estimate_tx_size_and_weight", &req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func (c *client) ExchangeMultisigKeys(req *RequestExchangeMultisigKeys) (resp *ResponseExchangeMultisigKeys, err error) {
+	err = c.do("exchange_multisig_keys", &req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func (c *client) Freeze(req *RequestFreeze) (err error) {
+	err = c.do("freeze", &req, nil)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (c *client) Frozen(req *RequestFrozen) (resp *ResponseFrozen, err error) {
+	err = c.do("frozen", &req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func (c *client) Thaw(req *RequestThaw) (err error) {
+	err = c.do("thaw", &req, nil)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (c *client) ScanTx(req *RequestScanTx) (err error) {
+	err = c.do("scan_tx", &req, nil)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (c *client) SetupBackgroundSync(req *RequestSetupBackgroundSync) (resp *ResponseSetupBackgroundSync, err error) {
+	err = c.do("setup_background_sync", &req, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func (c *client) StartBackgroundSync() (err error) {
+	err = c.do("start_background_sync", nil, nil)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (c *client) StopBackgroundSync() (err error) {
+	err = c.do("stop_background_sync", nil, nil)
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (c *client) GetDefaultFeePriority() (resp *ResponseGetDefaultFeePriority, err error) {
+	err = c.do("get_default_fee_priority", nil, &resp)
 	if err != nil {
 		return nil, err
 	}
