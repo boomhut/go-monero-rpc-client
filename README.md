@@ -133,11 +133,5 @@ As of now, only the wallet RPC has been implemented.
 * You can fork this, extend it and contribute back.
 * You can contribute with pull requests.
 
-# Donations
-You can make me happy by donating Bitcoin to the following address:
-```
-bc1qgezvfp4s0xme8pdv6aaqu9ayfgnv4mejdlv3tx
-```
-
 # LICENSE
 MIT License
